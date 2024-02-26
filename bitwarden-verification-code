@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -e
+
+export NODE_OPTIONS="--no-deprecation"
+
+retrieve_verification_code() {
+  local item_name="$1"
+  local session_key="$2"
+
+  local token
+  token=$(bw get totp "$item_name" --session "${session_key}" --raw)
+
+  echo "$token"
+}
+
+lock() {
+  bw lock --session "$session_key"
+}
+
+main() {
+  local session_key
+  local item_name
+  local verification_code
+
+  session_key=$(bw unlock --raw) || handle_error "Failed to obtain Bitwarden session key"
+
+  trap lock EXIT
+
+  if [ -n "$1" ]; then
+    item_name="$1"
+  else
+    read -rp "Enter the name of the Bitwarden item: " item_name
+  fi
+
+  verification_code=$(retrieve_verification_code "$item_name" "$session_key")
+
+  echo "$verification_code"
+}
+
+main "$@"
